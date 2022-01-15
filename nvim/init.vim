@@ -2,7 +2,7 @@ call plug#begin()
 
 " Util
 Plug 'preservim/nerdtree'
-Plug 'junegunn/fzf'
+Plug 'junegunn/fzf.vim'
 Plug 'DougBeney/pickachu'
 "
 " Org
@@ -29,9 +29,24 @@ call plug#end()
 filetype plugin indent on    " required
 filetype plugin on           " required
 
+
+"*******************************
+"           GENERAL            "
+"*******************************
+set textwidth=100
 set tabstop=4
 set shiftwidth=4
 set expandtab
+set cursorline
+
+
+
+"*******************************
+"          DEBUGGER            "
+"*******************************
+packadd! termdebug
+let g:termdebug_wide=-1
+tnoremap <Esc> <C-\><C-n>
 
 "*******************************
 "       COLOR THEME            "
@@ -41,6 +56,12 @@ if (has("termguicolors"))
 endif
 
 colorscheme shades_of_purple
+
+"*******************************
+"        clipboard             "
+"*******************************
+set clipboard+=unnamedplus
+
 
 
 "*******************************
@@ -76,8 +97,6 @@ let g:tagbar_autoclose=1
 "*******************************
 "           LSP                "
 "*******************************
-" Set completeopt to have a better completion experience
-" :help completeopt
 " menuone: popup even when there's only one match
 " noinsert: Do not insert text until a selection is made
 " noselect: Do not select, force user to select one from the menu
@@ -86,51 +105,39 @@ set completeopt=menuone,noinsert,noselect
 " Avoid showing extra messages when using completion
 set shortmess+=c
 
-" Configure LSP through rust-tools.nvim plugin.
-" rust-tools will configure and enable certain LSP features for us.
-" See https://github.com/simrat39/rust-tools.nvim#configuration
 lua <<EOF
-local nvim_lsp = require'lspconfig'
 
-local opts = {
-    tools = { -- rust-tools options
-        autoSetHints = true,
-        hover_with_actions = true,
-        inlay_hints = {
-            show_parameter_hints = false,
-            parameter_hints_prefix = "",
-            other_hints_prefix = "",
-        },
-    },
+ local opts = {
+     tools = { -- rust-tools options
+         autoSetHints = true,
+         hover_with_actions = true,
+         inlay_hints = {
+             show_parameter_hints = false,
+             parameter_hints_prefix = "",
+             other_hints_prefix = "",
+         },
+     },
+     -- see https://github.com/neovim/nvim-lspconfig/blob/master/doc/server_configurations.md#rust_analyzer
+     server = {
+         -- on_attach is a callback called when the language server attachs to the buffer
+         -- on_attach = on_attach,
+         settings = {
+             ["rust-analyzer"] = {
+                 -- enable clippy on save
+                 checkOnSave = {
+                     command = "clippy"
+                 },
+             }
+         }
+     },
+ }
+ require('rust-tools').setup(opts)
 
-    -- all the opts to send to nvim-lspconfig
-    -- these override the defaults set by rust-tools.nvim
-    -- see https://github.com/neovim/nvim-lspconfig/blob/master/doc/server_configurations.md#rust_analyzer
-    server = {
-        -- on_attach is a callback called when the language server attachs to the buffer
-        -- on_attach = on_attach,
-        settings = {
-            -- to enable rust-analyzer settings visit:
-            -- https://github.com/rust-analyzer/rust-analyzer/blob/master/docs/user/generated_config.adoc
-            ["rust-analyzer"] = {
-                -- enable clippy on save
-                checkOnSave = {
-                    command = "clippy"
-                },
-            }
-        }
-    },
-}
-
-require('rust-tools').setup(opts)
 EOF
 
-" Setup Completion
-" See https://github.com/hrsh7th/nvim-cmp#basic-configuration
 lua <<EOF
 local cmp = require'cmp'
 cmp.setup({
-  -- Enable LSP snippets
   snippet = {
     expand = function(args)
         vim.fn["vsnip#anonymous"](args.body)
@@ -139,10 +146,9 @@ cmp.setup({
   mapping = {
     ['<C-p>'] = cmp.mapping.select_prev_item(),
     ['<C-n>'] = cmp.mapping.select_next_item(),
-    -- Add tab support
     ['<S-Tab>'] = cmp.mapping.select_prev_item(),
     ['<Tab>'] = cmp.mapping.select_next_item(),
-    ['<C-d>'] = cmp.mapping.scroll_docs(-4),
+    ['<C-b>'] = cmp.mapping.scroll_docs(-4),
     ['<C-f>'] = cmp.mapping.scroll_docs(4),
     ['<C-Space>'] = cmp.mapping.complete(),
     ['<C-e>'] = cmp.mapping.close(),
@@ -152,7 +158,6 @@ cmp.setup({
     })
   },
 
-  -- Installed sources
   sources = {
     { name = 'nvim_lsp' },
     { name = 'vsnip' },
@@ -160,13 +165,14 @@ cmp.setup({
     { name = 'buffer' },
   },
 })
+
 EOF
 
 
-
+autocmd DiagnosticChanged * lua vim.diagnostic.setqflist({open = false })
 
 "*******************************
-"          Hide                "
+"            Hide              "
 "*******************************
 let s:hidden_all = 0
 function! ToggleHiddenAll()
@@ -186,9 +192,9 @@ function! ToggleHiddenAll()
 endfunction
 
 "*******************************
-"       Keymaps                "
+"           Keymaps            "
 "*******************************
-nnoremap <silent> <leader>f :FZF<CR>
+nnoremap <silent> <leader>f :Files<CR>
 nnoremap <silent> <leader>t :NERDTreeToggle<CR>
 nnoremap <silent> <leader><S-t> :TagbarToggle<CR>
 
@@ -199,7 +205,6 @@ nnoremap <silent> <leader>i ciw**<ESC>hp
 vnoremap <silent> <leader>ct ~<ESC>
 nnoremap <S-h> :call ToggleHiddenAll()<CR>
 
-" Use <Tab> and <S-Tab> to navigate through popup menu
 inoremap <expr> <Tab>   pumvisible() ? "\<C-n>" : "\<Tab>"
 inoremap <expr> <S-Tab> pumvisible() ? "\<C-p>" : "\<S-Tab>"
 
@@ -214,5 +219,18 @@ nnoremap <silent> ga    <cmd>lua vim.lsp.buf.code_action()<CR>
 nnoremap <silent> gK    <cmd>lua vim.lsp.diagnostic.show_line_diagnostics()<CR>
 
 " Goto previous/next diagnostic warning/error
-nnoremap <silent> g[ <cmd>lua vim.lsp.diagnostic.goto_prev()<CR>
-nnoremap <silent> g] <cmd>lua vim.lsp.diagnostic.goto_next()<CR>
+let s:hidden_qfix = 0
+function! ToggleQFix()
+    if s:hidden_all  == 0
+        let s:hidden_all = 1
+        copen
+    else 
+        cclose
+        let s:hidden_all = 0
+    endif
+endfunction
+
+
+nnoremap <silent> <leader>g :call ToggleQFix()<CR>
+nnoremap <silent> g[ <cmd>cnext<CR>
+nnoremap <silent> g] <cmd>cprevious<CR>

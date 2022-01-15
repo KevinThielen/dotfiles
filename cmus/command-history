@@ -1,9 +1,10 @@
 q
+colorscheme purple_shade
+colorscheme purple
+colorscheme gruvbox-warm
 bind -f common v player-stop
 bind -f common audioplay player-stop
-colorscheme purple_shade
 live-filter 
-colorscheme purple
 colorscheme default
 colorscheme cyan
 colorscheme amazon

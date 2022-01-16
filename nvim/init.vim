@@ -107,7 +107,7 @@ set shortmess+=c
 
 lua <<EOF
 
- local opts = {
+ require'rust-tools'.setup {
      tools = { -- rust-tools options
          autoSetHints = true,
          hover_with_actions = true,
@@ -131,7 +131,14 @@ lua <<EOF
          }
      },
  }
- require('rust-tools').setup(opts)
+
+ require'lspconfig'.omnisharp.setup {
+  capabilities = require('cmp_nvim_lsp').update_capabilities(vim.lsp.protocol.make_client_capabilities()),
+  on_attach = function(_, bufnr)
+    vim.api.nvim_buf_set_option(bufnr, 'omnifunc', 'v:lua.vim.lsp.omnifunc')
+  end,
+  cmd = { "/home/kevin/Downloads/Omnisharp/run", "--languageserver" , "--hostPID", tostring(pid) },
+}
 
 EOF
 
@@ -167,6 +174,7 @@ cmp.setup({
 })
 
 EOF
+
 
 
 autocmd DiagnosticChanged * lua vim.diagnostic.setqflist({open = false })
@@ -232,5 +240,6 @@ endfunction
 
 
 nnoremap <silent> <leader>g :call ToggleQFix()<CR>
+nnoremap  <leader>b <cmd>Cruntarget<CR>
 nnoremap <silent> g[ <cmd>cnext<CR>
 nnoremap <silent> g] <cmd>cprevious<CR>
